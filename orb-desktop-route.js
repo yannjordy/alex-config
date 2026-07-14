@@ -27,23 +27,23 @@ function OrbDesktopApp() {
   }, []);
 
   reactExports.useEffect(function() {
-    var unsub = window.alex.onSessionState(function(state) {
+    var unsub = window.opendex.onSessionState(function(state) {
       setStatus(state ? state.status : "idle");
     });
     return unsub;
   }, []);
 
   reactExports.useEffect(function() {
-    var unsubFrame = window.alex.onOrbScreenFrame(function(data) {
+    var unsubFrame = window.opendex.onOrbScreenFrame(function(data) {
       setSharing(true);
       if (imgRef.current) imgRef.current.src = data.base64;
     });
-    var unsubMenu = window.alex.onOrbMenuAction(function(action) {
+    var unsubMenu = window.opendex.onOrbMenuAction(function(action) {
       if (action === "screen-share") {
         if (!screenShareActive) setSharing(false);
       }
     });
-    var unsubAudio = window.alex.onOrbPlayAudio(function(buffer) {
+    var unsubAudio = window.opendex.onOrbPlayAudio(function(buffer) {
       try {
         var blob = new Blob([buffer], { type: "audio/mpeg" });
         var url = URL.createObjectURL(blob);
@@ -124,7 +124,7 @@ function OrbDesktopApp() {
     }
     animate();
 
-    var unsub = window.alex.onSessionState(function(state) {
+    var unsub = window.opendex.onSessionState(function(state) {
       var ns = orbStatusFromDex(state ? state.status : "idle");
       updateState(ns);
     });
@@ -137,7 +137,7 @@ function OrbDesktopApp() {
 
   return jsxRuntimeExports.jsxs("div", {
     style: { width: "100%", height: "100%", background: "transparent", WebkitAppRegion: "drag", position: "relative", overflow: "hidden" },
-    onContextMenu: function(e) { e.preventDefault(); e.stopPropagation(); window.alex.showOrbContextMenu(); },
+    onContextMenu: function(e) { e.preventDefault(); e.stopPropagation(); window.opendex.showOrbContextMenu(); },
     children: [
       sharing && jsxRuntimeExports.jsx("img", {
         ref: imgRef,
