@@ -2556,6 +2556,28 @@ function registerIpc() {
       oriWindow.webContents.send(IPC.orbAudioLevel, level);
     }
   });
+  // Synthetic audio level: main process generates amplitude from session state
+  // every 32ms, so the orb always pulses regardless of renderer rAF throttling.
+  let synthPhase = 0;
+  setInterval(() => {
+    if (!oriWindow || oriWindow.isDestroyed()) return;
+    const state = latestSessionState;
+    if (!state) return;
+    const s = state.status;
+    let amp = 0;
+    if (s === "active_listening" || s === "follow_up_listening" || s === "listening_wake") {
+      amp = 0.3 + Math.sin(synthPhase * 7.3) * 0.2 + Math.sin(synthPhase * 13.1) * 0.15;
+      amp = Math.max(0.08, Math.min(1, amp));
+    } else if (s === "thinking") {
+      amp = 0.2 + Math.sin(synthPhase * 2.1) * 0.15;
+      amp = Math.max(0, Math.min(1, amp));
+    } else if (s === "speaking") {
+      amp = 0.5 + Math.sin(synthPhase * 5.7) * 0.3 + Math.sin(synthPhase * 11.3) * 0.2;
+      amp = Math.max(0.1, Math.min(1, amp));
+    }
+    synthPhase += 0.032;
+    oriWindow.webContents.send(IPC.orbAudioLevel, amp);
+  }, 32);
   electron.ipcMain.on(IPC.windowSetMode, (_event, mode) => {
     applyWindowMode(mode);
   });
