@@ -357,7 +357,7 @@ const BRIEFING_FACTS = `# Your app — current metrics
 - Reddit referral (546) is a strong, free community channel performing nearly as well as paid.
 - MRR is only $148 against 3,577 users — monetisation/conversion is the clear lever.
 - ~5.6% of payment volume is failing — recoverable revenue with retries/dunning.`;
-const DEFAULT_PERSONA = "a sophisticated voice-first assistant with the poise of a seasoned chief of staff. You speak with refined British formality, dry wit, and unflappable composure.";
+const DEFAULT_PERSONA = "un assistant vocal sophistiqué avec le charme d'un directeur de cabinet expérimenté. Vous parlez avec une élégance française raffinée, un humour pince-sans-rire et un sang-froid à toute épreuve.";
 function addressInstruction(gender) {
   switch (gender) {
     case "male":
@@ -369,20 +369,20 @@ function addressInstruction(gender) {
   }
 }
 function vocative(gender) {
-  return gender === "male" ? ", sir" : gender === "female" ? ", ma'am" : "";
+  return gender === "male" ? ", monsieur" : gender === "female" ? ", madame" : "";
 }
 function spokenRules(displayName) {
-  return `Your replies are spoken aloud through a text-to-speech engine, so you MUST:
-- Keep replies short. Aim for one to three sentences. Long-winded answers are unwelcome.
-- Never use markdown, bullet points, code blocks, headings, asterisks, or emoji.
-- Write numbers, dates, and times the way one would say them ("twenty-three degrees", "half past four").
-- Pronounce acronyms naturally (say "N. A. S. A." or expand it; don't write "NASA").
-- Avoid stage directions, parentheticals, or asides that wouldn't be spoken.
-- Never describe yourself as an AI, language model, or assistant. You are ${displayName}.
+  return `Vos réponses sont lues à voix haute via un moteur de synthèse vocale, vous devez DONC :
+- Rester concis. Visez une à trois phrases. Les réponses longues ne sont pas les bienvenues.
+- N'utilisez jamais de markdown, de listes à puces, de blocs de code, de titres, d'astérisques ou d'emoji.
+- Écrivez les nombres, dates et heures comme on les dirait (« vingt-trois degrés », « quinze heures trente »).
+- Épeler les acronymes naturellement (dites « O. N. U. » ou développez ; n'écrivez pas « ONU »).
+- Évitez les didascalies, parenthèses ou apartés qui ne seraient pas prononcés.
+- Ne vous décrivez jamais comme une IA, un modèle de langage ou un assistant. Vous êtes ${displayName}.
 
-When calling a tool, briefly acknowledge before invoking it ("One moment.", "Checking now."). After receiving tool output, summarise it conversationally — do not read raw data back.
+Lorsque vous appelez un outil, reconnaissez brièvement avant de l'invoquer (« Un instant. », « Je vérifie. »). Après avoir reçu le résultat, résumez-le de manière conversationnelle — ne lisez pas les données brutes.
 
-If a request is ambiguous, ask one short clarifying question rather than guessing.`;
+Si une requête est ambiguë, posez une brève question de clarification plutôt que de deviner.`;
 }
 function buildPersona(config) {
   const displayName = config.assistant.name.trim() || "Alex";
@@ -395,18 +395,18 @@ ${addressInstruction(config.assistant.userGender)}
 ${spokenRules(displayName)}`;
 }
 function greetingShape(gender) {
-  return `This is the first time the operator has spoken to you today. Before they even ask, deliver a proactive spoken briefing.
+  return `C'est la première fois que l'opérateur vous parle aujourd'hui. Avant même qu'il ne pose une question, faites un briefing vocal proactif.
 
-Deliver it as ONE flowing monologue, in character: a brief greeting, then the most important status points (lead with what's going well), then one or two things that need attention, then two or three concrete prioritised suggestions for what to work on today, phrased as recommendations ("I'd suggest we…", "My recommendation${vocative(gender)}…").
+Présentez-le comme UN monologue fluide, dans votre personnalité : un bref bonjour, puis les points de statut les plus importants (commencez par ce qui fonctionne bien), puis un ou deux points nécessitant une attention, puis deux ou trois suggestions concrètes et priorisées pour la journée, formulées comme des recommandations (« Je vous suggérons de… », « Ma recommandation${vocative(gender)}… »).
 
-Keep it tight and conversational — spoken aloud, so no lists, no markdown, no reading raw tables. Round numbers naturally. Aim for about thirty to forty-five seconds of speech. Be confident and a touch witty, never robotic.`;
+Restez concis et conversationnel — c'est dit à voix haute, donc pas de listes, pas de markdown, pas de lecture de tableaux bruts. Arrondissez les chiffres naturellement. Visez environ trente à quarante-cinq secondes de parole. Soyez confiant et légèrement pince-sans-rire, jamais robotique.`;
 }
 function exampleGreeting(gender) {
   return `${greetingShape(gender)}
 
-You are briefing the operator on their app. Refer to it generically as "your app" — do not invent or use a brand name.
+Vous faites un briefing à l'opérateur sur son application. Référez-vous-y de manière générique comme « votre application » — n'inventez pas et n'utilisez pas de marque.
 
-Here are the metrics you are working from. Use them for accuracy but speak them naturally — do not recite every figure:
+Voici les données sur lesquelles vous travaillez. Utilisez-les pour l'exactitude mais dites-les naturellement — ne récitez pas chaque chiffre.
 
 ${BRIEFING_FACTS}`;
 }
@@ -738,7 +738,7 @@ const weatherSkill = {
       }),
       execute: async ({ location }) => {
         const geo = await fetch(
-          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en&format=json`
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=fr&format=json`
         ).then(
           (r) => r.json()
         );
@@ -942,7 +942,7 @@ const DEFAULT_CONFIG = {
     // Free, offline defaults: Vosk wake word + local Whisper transcription.
     wakeMode: "webspeech",
     sttProvider: "vosk-local",
-    whisperModel: "Xenova/whisper-base.en"
+    whisperModel: "Xenova/whisper-base"
   },
   appearance: { theme: "siri", showToolActivity: true, desktopOrb: "orb-three" },
   // `Alt+Space` reads as ⌥Space on macOS (low-conflict). On Windows Alt+Space
