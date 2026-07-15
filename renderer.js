@@ -33273,7 +33273,6 @@ function orbStatusFromDex(s) {
 }
 function OrbFioSession(props) {
   var status = props.status;
-  var orbAmpRef = props.orbAmpRef;
   var orbRef = reactExports.useRef(null);
 
   reactExports.useEffect(function() {
@@ -33436,7 +33435,7 @@ function OrbFioSession(props) {
 
       ctx.clearRect(0, 0, W, H);
 
-      var rawLevel = orbAmpRef ? orbAmpRef.current : 0;
+      var rawLevel = window.__orbAudioLevel || 0;
       var cfg = STATE_CONFIG[State.current] || STATE_CONFIG.idle;
       var audioLevel = rawLevel > 0.01
         ? Math.min(rawLevel * 2.5, 3)
@@ -33724,14 +33723,14 @@ function OrbDesktopApp() {
   var st = reactExports.useState("idle"), status = st[0], setStatus = st[1];
   var canvasRef = reactExports.useRef(null);
   var imgRef = reactExports.useRef(null);
-  var orbAmpRef = reactExports.useRef(0);
   var [sharing, setSharing] = reactExports.useState(false);
   var [orbType, setOrbType] = reactExports.useState("orb-three");
   var [cfg, setCfg] = reactExports.useState(null);
 
   reactExports.useEffect(function() {
+    window.__orbAudioLevel = 0;
     var unsub = window.opendex.onOrbAudioLevel(function(level) {
-      orbAmpRef.current = level;
+      window.__orbAudioLevel = level;
     });
     return unsub;
   }, []);
@@ -33910,7 +33909,7 @@ function OrbDesktopApp() {
       orbType === "orb-three"
         ? jsxRuntimeExports.jsx("canvas", { ref: canvasRef, style: { width: "100%", height: "100%", display: "block", position: "relative", zIndex: 1, WebkitAppRegion: 'no-drag' } })
         : orbType === "fio"
-        ? jsxRuntimeExports.jsx(OrbFioSession, { status: status, orbAmpRef: orbAmpRef })
+        ? jsxRuntimeExports.jsx(OrbFioSession, { status: status })
         : jsxRuntimeExports.jsx(OrbAppleSession, { status: status })
     ]
   });
