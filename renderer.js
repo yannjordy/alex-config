@@ -33336,10 +33336,10 @@ function OrbFioSession(props) {
     };
 
     var STATE_CONFIG = {
-      idle:      { baseEnergy: 0.16, rot: 0.0009 },
-      listening: { baseEnergy: 0.4,  rot: 0.0026 },
-      thinking:  { baseEnergy: 0.5,  rot: 0.006 },
-      speaking:  { baseEnergy: 0.62, rot: 0.0018 }
+      idle:      { baseEnergy: 0.16, rot: 0.0009, fallbackLevel: 0.05 },
+      listening: { baseEnergy: 0.4,  rot: 0.0026, fallbackLevel: 0.5 },
+      thinking:  { baseEnergy: 0.5,  rot: 0.006,  fallbackLevel: 0.35 },
+      speaking:  { baseEnergy: 0.62, rot: 0.0018, fallbackLevel: 0.85 }
     };
 
     var pulseRings = [];
@@ -33436,7 +33436,11 @@ function OrbFioSession(props) {
 
       ctx.clearRect(0, 0, W, H);
 
-      var audioLevel = externalLevel > 0 ? Math.min(externalLevel * 2.5, 3) : 0;
+      var rawLevel = externalLevel;
+      var cfg = STATE_CONFIG[State.current] || STATE_CONFIG.idle;
+      var audioLevel = rawLevel > 0.01
+        ? Math.min(rawLevel * 2.5, 3)
+        : cfg.fallbackLevel * (0.6 + Math.sin(time * 0.04) * 0.4);
 
       State.energy = STATE_CONFIG[State.current].baseEnergy + audioLevel * 0.5;
 
