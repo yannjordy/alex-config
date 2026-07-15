@@ -33935,3 +33935,222 @@ export {
   captureUtterance as c,
   framesToFloat32 as f
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FIO THEME — Thème complet avec orb de particules canvas 2D
+// ═══════════════════════════════════════════════════════════════════════════
+(function(){
+var fioStates = {
+  idle:      { baseEnergy: 0.16, rot: 0.0009, fallbackLevel: 0.05 },
+  listening: { baseEnergy: 0.4,  rot: 0.0026, fallbackLevel: 0.5 },
+  thinking:  { baseEnergy: 0.5,  rot: 0.006,  fallbackLevel: 0.35 },
+  speaking:  { baseEnergy: 0.62, rot: 0.0018, fallbackLevel: 0.85 }
+};
+var SHAPES = { question: '?', exclamation: '!', error: '\u2715' };
+var shapeCache = {};
+function getShapePoints(char) {
+  if (shapeCache[char]) return shapeCache[char];
+  var S = 260, off = document.createElement('canvas');
+  off.width = S; off.height = S;
+  var octx = off.getContext('2d');
+  octx.fillStyle = '#000'; octx.fillRect(0,0,S,S);
+  octx.fillStyle = '#fff'; octx.textAlign = 'center'; octx.textBaseline = 'middle';
+  octx.font = 'bold ' + (char.length > 1 ? S*0.4 : S*0.72) + 'px "Segoe UI", Arial, sans-serif';
+  octx.fillText(char, S/2, S/2 + S*0.03);
+  var data = octx.getImageData(0,0,S,S).data, pts = [], step = 2;
+  for (var y=0;y<S;y+=step) for (var x=0;x<S;x+=step) {
+    if (data[(y*S+x)*4] > 120) pts.push({x:(x-S/2)/(S/2),y:(y-S/2)/(S/2)});
+  }
+  shapeCache[char] = pts.length ? pts : [{x:0,y:0}];
+  return shapeCache[char];
+}
+function lerp(a,b,t){return a+(b-a)*t}
+function easeOutCubic(x){return 1-Math.pow(1-x,3)}
+
+function FioCanvas(props) {
+  var status = props.status;
+  var orbRef = reactExports.useRef(null);
+  reactExports.useEffect(function() {
+    var canvas = orbRef.current;
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var DPR = Math.min(window.devicePixelRatio||1,3), SIZE = 400;
+    canvas.style.width = SIZE+'px'; canvas.style.height = SIZE+'px';
+    canvas.width = SIZE*DPR; canvas.height = SIZE*DPR;
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    var W=SIZE, H=SIZE;
+    var STREAMS=22, POINTS_PER_STREAM=70, WINDINGS=2.6, particles=[];
+    function buildStreams(){
+      particles.length=0;
+      for(var s=0;s<STREAMS;s++){
+        var off=(s/STREAMS)*Math.PI*2, tilt=(s%2===0?1:-1)*0.15, isAmber=(s%5===0);
+        for(var i=0;i<POINTS_PER_STREAM;i++){
+          var t=i/(POINTS_PER_STREAM-1);
+          var phi=-Math.PI/2+t*Math.PI, theta=off+t*WINDINGS*Math.PI*2;
+          var x=Math.cos(phi)*Math.cos(theta), y=Math.sin(phi)+Math.sin(theta*0.5)*tilt*0.15, z=Math.cos(phi)*Math.sin(theta);
+          var len=Math.sqrt(x*x+y*y+z*z)||1;
+          particles.push({tx:x/len,ty:y/len,tz:z/len,delay:Math.random()*0.18,dur:0.35+Math.random()*0.2,
+            phase:Math.random()*Math.PI*2,speed:0.7+Math.random()*0.7,
+            isAmber:isAmber?Math.random()<0.75:Math.random()<0.12,
+            size:0.55+Math.random()*0.55,ox:0,oy:0,vx:0,vy:0,lastSx:0,lastSy:0,shapeSlot:Math.random()});
+        }
+      }
+    }
+    buildStreams();
+    var State={current:'idle',energy:0.16,targetEnergy:0.16,rotSpeed:0.0009,shapeMix:0,shapeMixTarget:0};
+    var pulseRings=[], currentBaseR=100, SPRING_K=120, SPRING_D=14;
+    var currentShapePoints=null, shapeRevertTimer=null;
+    function showShape(nameOrChar,holdMs){
+      holdMs=holdMs||1700;
+      var char=SHAPES[nameOrChar]||nameOrChar;
+      currentShapePoints=getShapePoints(char);
+      State.shapeMixTarget=1;
+      clearTimeout(shapeRevertTimer);
+      shapeRevertTimer=setTimeout(function(){State.shapeMixTarget=0;},holdMs);
+    }
+    function triggerPulseRing(){pulseRings.push({r:0.3,alpha:0.5});}
+    function handleOrbInteraction(clientX,clientY){
+      var rect=canvas.getBoundingClientRect();
+      var clickX=(clientX-rect.left)*(SIZE/rect.width), clickY=(clientY-rect.top)*(SIZE/rect.height);
+      var influenceRadius=currentBaseR*1.15, maxKick=currentBaseR*5.5;
+      for(var pi=0;pi<particles.length;pi++){
+        var p=particles[pi], dx=p.lastSx-clickX, dy=p.lastSy-clickY;
+        var dist=Math.sqrt(dx*dx+dy*dy)+0.0001;
+        if(dist>influenceRadius)continue;
+        var falloff=Math.pow(1-dist/influenceRadius,2), kick=falloff*maxKick;
+        p.vx+=(dx/dist)*kick; p.vy+=(dy/dist)*kick;
+      }
+      triggerPulseRing();
+    }
+    var rotY=0,rotX=0.16,time=0,startTime=null,frameId;
+    var lastFioState='idle',lastShapeTime=0,shapeCooldown=8000,shapeChance=0.35;
+    function draw(ts){
+      if(startTime===null)startTime=ts;
+      var elapsed=(ts-startTime)/1000; time+=1;
+      var cx=W/2,cy=H/2,baseR=Math.min(cx,cy)*0.82; currentBaseR=baseR;
+      ctx.clearRect(0,0,W,H);
+      var cfg=fioStates[State.current]||fioStates.idle;
+      var rawLevel=window.__orbAudioLevel||0;
+      var audioLevel=rawLevel>0.01?Math.min(rawLevel*2.5,3):cfg.fallbackLevel*(0.6+Math.sin(time*0.04)*0.4);
+      State.energy=cfg.baseEnergy+audioLevel*0.5;
+      State.shapeMix=lerp(State.shapeMix,State.shapeMixTarget,0.07);
+      var introT=Math.max(0,Math.min(1,elapsed/0.6));
+      var introScale=0.88+easeOutCubic(introT)*0.12, introAlpha=easeOutCubic(introT);
+      rotY+=(State.rotSpeed+audioLevel*0.005)*(1-State.shapeMix*0.9);
+      rotX=0.16+Math.sin(time*0.0016)*0.05;
+      var cY=Math.cos(rotY),sY=Math.sin(rotY),cX=Math.cos(rotX),sX=Math.sin(rotX);
+      var projected=[];
+      for(var pi=0;pi<particles.length;pi++){
+        var p=particles[pi];
+        var localT=Math.max(0,Math.min(1,(elapsed-p.delay)/p.dur));
+        var f=easeOutCubic(localT);
+        var pulse=(1+audioLevel*0.35+Math.sin(time*0.02*p.speed+p.phase)*(0.03+State.energy*0.32))*introScale;
+        var x=p.tx*pulse,y=p.ty*pulse,z=p.tz*pulse;
+        var x1=x*cY-z*sY,z1=x*sY+z*cY,y1=y*cX-z1*sX,z2=y*sX+z1*cX;
+        var scale=1/(2.3-z2);
+        var sphereSx=cx+x1*baseR*scale, sphereSy=cy+y1*baseR*scale;
+        var sx=sphereSx,sy=sphereSy;
+        if(State.shapeMix>0.002&&currentShapePoints){
+          var idx=Math.floor(p.shapeSlot*currentShapePoints.length)%currentShapePoints.length;
+          var sp=currentShapePoints[idx];
+          sx=lerp(sphereSx,cx+sp.x*baseR*0.95,State.shapeMix);
+          sy=lerp(sphereSy,cy+sp.y*baseR*0.95,State.shapeMix);
+        }
+        p.vx+=(-SPRING_K*p.ox-SPRING_D*p.vx)*(1/60);
+        p.vy+=(-SPRING_K*p.oy-SPRING_D*p.vy)*(1/60);
+        p.ox+=p.vx*(1/60); p.oy+=p.vy*(1/60);
+        sx+=p.ox; sy+=p.oy; p.lastSx=sx; p.lastSy=sy;
+        var depth=(z2+1)/2;
+        var twinkle=0.5+0.5*Math.sin(time*0.045*p.speed+p.phase);
+        var alpha=(0.2+depth*0.7)*(0.55+twinkle*0.45)*f*introAlpha*(1+audioLevel*0.3);
+        var psize=p.size*(0.8+depth*1.2)*(1+audioLevel*0.5);
+        projected.push({sx:sx,sy:sy,depth:depth,size:psize,alpha:alpha,isAmber:p.isAmber});
+      }
+      projected.sort(function(a,b){return a.depth-b.depth;});
+      for(var ji=0;ji<projected.length;ji++){
+        var pt=projected[ji];
+        ctx.beginPath();
+        ctx.fillStyle=pt.isAmber?'rgba(255,165,70,'+pt.alpha+')':'rgba(255,248,232,'+(pt.alpha*0.95)+')';
+        ctx.arc(pt.sx,pt.sy,pt.size,0,Math.PI*2);ctx.fill();
+      }
+      if(audioLevel>0.05){
+        var glowR=baseR*(0.4+audioLevel*0.3);
+        var glow=ctx.createRadialGradient(cx,cy,0,cx,cy,glowR);
+        glow.addColorStop(0,'rgba(255,180,100,'+(audioLevel*0.25)+')');
+        glow.addColorStop(0.5,'rgba(255,150,60,'+(audioLevel*0.12)+')');
+        glow.addColorStop(1,'rgba(255,120,40,0)');
+        ctx.fillStyle=glow;ctx.fillRect(cx-glowR,cy-glowR,glowR*2,glowR*2);
+      }
+      for(var ri=pulseRings.length-1;ri>=0;ri--){
+        var ring=pulseRings[ri];ring.r+=0.012;ring.alpha-=0.010;
+        if(ring.alpha<=0){pulseRings.splice(ri,1);continue;}
+        ctx.beginPath();ctx.strokeStyle='rgba(255,180,100,'+ring.alpha+')';ctx.lineWidth=1;
+        ctx.arc(cx,cy,baseR*ring.r,0,Math.PI*2);ctx.stroke();
+      }
+      frameId=requestAnimationFrame(draw);
+    }
+    frameId=requestAnimationFrame(draw);
+    var unsubState=window.opendex.onSessionState(function(st){
+      var s=(st&&st.status)?st.status:st;
+      var fs='idle';
+      if(s==='active_listening'||s==='follow_up_listening'||s==='listening_wake')fs='listening';
+      else if(s==='thinking')fs='thinking';
+      else if(s==='speaking')fs='speaking';
+      if(fioStates[fs]){State.current=fs;State.targetEnergy=fioStates[fs].baseEnergy;State.rotSpeed=fioStates[fs].rot;}
+      if(fs!==lastFioState){
+        var now=Date.now();
+        if(now-lastShapeTime>shapeCooldown){
+          if(fs==='thinking'&&Math.random()<shapeChance){showShape('question',2500);lastShapeTime=now;}
+          else if(fs==='speaking'&&Math.random()<shapeChance*0.5){showShape('exclamation',2000);lastShapeTime=now;}
+        }
+        triggerPulseRing();lastFioState=fs;
+      }
+    });
+    var pointerDownHandler=function(e){handleOrbInteraction(e.clientX,e.clientY);};
+    canvas.addEventListener('pointerdown',pointerDownHandler);
+    return function(){cancelAnimationFrame(frameId);canvas.removeEventListener('pointerdown',pointerDownHandler);unsubState();};
+  },[]);
+  return jsxRuntimeExports.jsx('canvas',{
+    ref:orbRef,
+    style:{width:'100%',height:'100%',display:'block',pointerEvents:'auto'},
+    onContextMenu:function(e){e.preventDefault();e.stopPropagation();window.opendex.showOrbContextMenu();}
+  });
+}
+
+function FioShell(props) {
+  reactExports.useEffect(function(){
+    var s=document.createElement('style');
+    s.id='fio-theme-css';
+    s.textContent='[data-dex-theme="fio"]{background:transparent !important}';
+    document.head.appendChild(s);
+    return function(){var e=document.getElementById('fio-theme-css');if(e)e.remove();};
+  },[]);
+  return jsxRuntimeExports.jsx('div',{
+    className:'relative flex flex-1 overflow-hidden bg-background text-foreground',
+    children:[
+      jsxRuntimeExports.jsx('div',{className:'absolute inset-0 flex items-center justify-center',children:
+        jsxRuntimeExports.jsx(FioCanvas,{status:props.status,getAmplitude:props.getAmplitude})
+      }),
+      jsxRuntimeExports.jsx(MinimalShell,{
+        props:props,themeId:'fio',
+        visual:jsxRuntimeExports.jsx('div',{className:'h-0 w-0'}),
+        transcript:jsxRuntimeExports.jsx(OverlayTranscript,{
+          turns:props.transcript,liveCaption:props.liveCaption,
+          toolInvocations:props.toolInvocations,variant:'bubble'
+        })
+      })
+    ]
+  });
+}
+
+function FioPreview() {
+  return jsxRuntimeExports.jsx('span',{
+    className:'relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full',
+    style:{background:'radial-gradient(circle,rgba(255,157,61,0.3) 0%,rgba(7,5,10,1) 70%)'},
+    children:jsxRuntimeExports.jsx('span',{style:{color:'#ff9d3d',fontSize:'14px',fontWeight:'bold'},children:'Fio'})
+  });
+}
+
+var fioTheme={id:'fio',label:'Fio',description:'Orbe de particules amber avec formes intelligentes.',order:2,Component:FioShell,Preview:FioPreview};
+DEX_THEMES.push(fioTheme);
+})();
