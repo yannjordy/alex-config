@@ -18762,7 +18762,7 @@ function UpdateBanner() {
       case "downloaded":
         return `Update${status.version ? ` ${status.version}` : ""} ready — restart to apply`;
       case "error":
-        return `Update failed: ${status.message ?? "unknown error"}`;
+        return `Échec de la mise à jour : ${status.message ?? "erreur inconnue"}`;
     }
   })();
   const isError = status.state === "error";
@@ -22612,7 +22612,7 @@ function WeatherCard({ input, result, status, surface }) {
   const data = result;
   const requested = String(input?.location ?? "");
   if (!data || status !== "done" || data.error) {
-    const text = data?.error ? data.error : `Checking the weather${requested ? ` in ${requested}` : ""}…`;
+    const text = data?.error ? data.error : `Vérification de la météo${requested ? ` à ${requested}` : ""}…`;
     return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full max-w-sm rounded-2xl border border-border bg-card/80 px-4 py-3 text-sm text-muted-foreground shadow-sm backdrop-blur", children: text });
   }
   const { label, Icon: Icon2 } = describeWeather(data.now.weatherCode, data.now.isDay);

@@ -248,7 +248,7 @@ async function streamChat({
   if (signal?.aborted) return [];
   if (!emittedAny && capturedError) {
     const err = capturedError;
-    const apology = `Apologies, sir — ${sanitiseError(err.message ?? String(err))}`;
+    const apology = `Désolé — ${sanitiseError(err.message ?? String(err))}`;
     onDelta(apology);
     return [{ role: "assistant", content: apology }];
   }
@@ -275,12 +275,12 @@ async function resolveModel(config) {
     case "opendex":
       throw new Error("l'abonnement OpenDex n'est pas encore disponible");
     case "google":
-      if (!process.env.GOOGLE_API_KEY) throw new Error("no Google AI API key is set");
+      if (!process.env.GOOGLE_API_KEY) throw new Error("clé API Google AI non définie");
       return openai.createOpenAI({ baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/", apiKey: process.env.GOOGLE_API_KEY })(model);
     case "ollama":
       return openai.createOpenAI({ baseURL: config.llm.ollamaBaseUrl || "http://localhost:11434/v1/", apiKey: "ollama" })(model);
     case "opencode":
-      if (!process.env.OPENCODE_ZEN_API_KEY) throw new Error("no OpenCode Zen API key is set");
+      if (!process.env.OPENCODE_ZEN_API_KEY) throw new Error("clé API OpenCode Zen non définie");
       return openai.createOpenAI({ baseURL: "https://opencode.ai/zen/v1", apiKey: process.env.OPENCODE_ZEN_API_KEY })(model);
     case "openrouter":
       if (!process.env.OPENROUTER_API_KEY) throw new Error("aucune clé API OpenRouter définie");
@@ -505,7 +505,7 @@ async function startRealtimeSession(opts) {
     ws.addEventListener("open", () => resolve(), { once: true });
     ws.addEventListener(
       "close",
-      () => reject(new Error("Realtime connection failed — please try again.")),
+      () => reject(new Error("Échec de la connexion temps réel — veuillez réessayer.")),
       { once: true }
     );
   });
@@ -712,7 +712,7 @@ const clockSkill = {
           }).format(now);
           return { timezone: tz, formatted, iso: now.toISOString() };
         } catch {
-          return { error: `Unknown timezone: ${tz}` };
+          return { error: `Fuseau horaire inconnu : ${tz}` };
         }
       }
     }
@@ -743,7 +743,7 @@ const weatherSkill = {
           (r) => r.json()
         );
         const place = geo.results?.[0];
-        if (!place) return { error: `I couldn't find a place called "${location}".` };
+        if (!place) return { error: `Je n'ai pas trouvé de lieu nommé « ${location} ».` };
         const forecast = await fetch(
           `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=2`
         ).then(
@@ -812,7 +812,7 @@ const webSearchSkill = {
           })
         });
         if (!res.ok) {
-          return { error: `Search failed: ${res.status} ${res.statusText}` };
+          return { error: `Échec de la recherche : ${res.status} ${res.statusText}` };
         }
         const data = await res.json();
         return {
@@ -880,7 +880,7 @@ const openSkill = {
       summarize: (i) => `Open URL: ${i.url}`,
       execute: async ({ url }) => {
         if (!/^(https?:|mailto:)/i.test(url)) {
-          return { error: "Only http(s) and mailto URLs are allowed." };
+          return { error: "Seules les URLs http(s) et mailto sont autorisées." };
         }
         await electron.shell.openExternal(url);
         return { ok: true, opened: url };
@@ -1158,7 +1158,7 @@ function pickDisplay(displayId) {
 async function captureScreen(opts = {}) {
   if (process.platform === "darwin" && electron.systemPreferences.getMediaAccessStatus("screen") !== "granted") {
     return {
-      error: "[FR] Permission d'écran manquante, so I can't see the screen yet. Please enable OpenDex (in dev, the Electron app) under System Settings, Privacy and Security, Screen Recording, then restart me and try again."
+      error: "Permission d'écran manquante. Veuillez activer OpenDex dans Paramètres Système > Confidentialité et sécurité > Enregistrement de l'écran, puis redémarrer l'application."
     };
   }
   const display = pickDisplay(opts.displayId);
@@ -1172,11 +1172,11 @@ async function captureScreen(opts = {}) {
     }
   });
   const source = sources.find((s) => s.display_id === String(display.id)) ?? sources[0];
-  if (!source) return { error: "No screen source is available to capture." };
+  if (!source) return { error: "Aucune source d'écran disponible pour la capture." };
   let image = source.thumbnail;
   if (image.isEmpty()) {
     return {
-      error: "[FR] Capture d'écran vide. On macOS, grant OpenDex Screen Recording permission in System Settings → Privacy & Security, then try again."
+      error: "Capture d'écran vide. Veuillez accorder la permission d'enregistrement de l'écran à OpenDex dans Paramètres Système > Confidentialité et sécurité, puis réessayer."
     };
   }
   const native = image.getSize();
@@ -1279,7 +1279,7 @@ function ensureInputAccess() {
     electron.systemPreferences.isTrustedAccessibilityClient(true);
   }
   return {
-    error: "[FR] Permission d'accessibilité manquante, so I can't control the mouse or keyboard yet. I've opened the request — please enable OpenDex (in dev, the Electron app) under System Settings, Privacy and Security, Accessibility, then restart me and try again."
+    error: "Permission d'accessibilité manquante. Veuillez activer OpenDex dans Paramètres Système > Confidentialité et sécurité > Accessibilité, puis redémarrer l'application."
   };
 }
 let lastShot = null;
@@ -1543,7 +1543,7 @@ const tools = [
       ensureConfigured();
       const resolved = keys.map(keyFromToken);
       const bad = keys.find((_, idx) => resolved[idx] === null);
-      if (bad) return { error: `Unrecognised key: "${bad}".` };
+      if (bad) return { error: `Touche non reconnue : « ${bad} ».` };
       const ks = resolved;
       await nutJs.keyboard.pressKey(...ks);
       await nutJs.keyboard.releaseKey(...[...ks].reverse());
@@ -1655,7 +1655,7 @@ function buildToolSet({
         execute: skill.sensitive ? async (input) => {
           const detail = t.summarize ? t.summarize(input) : t.name;
           const allowed = await requestPermission(skill.id, skill.label, detail);
-          if (!allowed) return { error: "Permission denied by the user." };
+          if (!allowed) return { error: "Permission refusée par l'utilisateur." };
           return t.execute(input);
         } : async (input) => t.execute(input)
       });
@@ -1821,7 +1821,7 @@ async function transcribeOpenAI(wav) {
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => res.statusText);
-    throw new Error(`OpenAI transcription failed: ${res.status} ${detail.slice(0, 200)}`);
+    throw new Error(`Échec de la transcription OpenAI : ${res.status} ${detail.slice(0, 200)}`);
   }
   return (await res.text()).trim();
 }
