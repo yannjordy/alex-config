@@ -32867,8 +32867,8 @@ function AppearanceSection({ data, setConfig }) {
             value: config.appearance.desktopOrb || "orb-three",
             options: [
               { value: "orb-three", label: "Orb Three" },
-              { value: "apple-orb", label: "Session Apple Orb" },
-              { value: "fio", label: "Fio Orb" }
+              { value: "apple-orb", label: "Orb Apple" },
+              { value: "fio", label: "Orb Fio" }
             ],
             onChange: (v) => setConfig({ appearance: { desktopOrb: v } })
           }
@@ -33336,10 +33336,10 @@ function OrbFioSession(props) {
     };
 
     var STATE_CONFIG = {
-      idle:      { baseEnergy: 0.16, rot: 0.0009, fallbackLevel: 0.05 },
-      listening: { baseEnergy: 0.4,  rot: 0.0026, fallbackLevel: 0.5 },
-      thinking:  { baseEnergy: 0.5,  rot: 0.006,  fallbackLevel: 0.35 },
-      speaking:  { baseEnergy: 0.62, rot: 0.0018, fallbackLevel: 0.85 }
+      idle:      { label: 'Veille',          baseEnergy: 0.16, rot: 0.0009, fallbackLevel: 0.05 },
+      listening: { label: "À l'écoute...",   baseEnergy: 0.4,  rot: 0.0026, fallbackLevel: 0.5 },
+      thinking:  { label: 'Réflexion...',    baseEnergy: 0.5,  rot: 0.006,  fallbackLevel: 0.35 },
+      speaking:  { label: 'Réponse...',      baseEnergy: 0.62, rot: 0.0018, fallbackLevel: 0.85 }
     };
 
     var pulseRings = [];
